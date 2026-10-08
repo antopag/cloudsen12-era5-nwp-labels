@@ -1,0 +1,15 @@
+# Python 3.9+
+numpy
+pandas
+scipy
+matplotlib
+xarray
+netCDF4
+rasterio
+scikit-learn
+torch>=2.0
+torchvision
+segmentation-models-pytorch>=0.3
+cdsapi
+requests
+tqdm
