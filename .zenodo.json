@@ -1,0 +1,48 @@
+{
+  "title": "Code for: ERA5 and GFS Cloud Cover vs. CloudSEN12+ - Can NWP Replace Expert Labels?",
+  "description": "<p>Analysis and experiment code accompanying the manuscript <em>ERA5 and GFS Cloud Cover vs. CloudSEN12+: Can NWP Replace Expert Labels?</em> by Anna Anzalone and Antonio Pagliaro, submitted to Applied Sciences (MDPI), 2026.</p><p>The study asks whether freely available cloud-cover fields from numerical weather prediction (NWP) products can replace expensive expert pixel-level annotations when training cloud detectors for Sentinel-2. It has two parts: the collocation of ERA5 and GFS total cloud cover with 48,380 expert-annotated CloudSEN12+ patches spanning 2017-2022, and a set of controlled U-Net experiments in which architecture, spectral input, training budget, data split and test set are held fixed so that only the source of the training labels varies.</p><p>The repository contains the download scripts for CloudSEN12+, ERA5 and GFS, the collocation and bootstrap statistics, the collocation-scheme sensitivity test, and the U-Net training, evaluation and plotting scripts, together with a README mapping each script to the table or figure of the paper it produces.</p>",
+  "upload_type": "software",
+  "license": "MIT",
+  "access_right": "open",
+  "creators": [
+    {
+      "name": "Anzalone, Anna",
+      "affiliation": "INAF - Istituto di Astrofisica Spaziale e Fisica Cosmica, Palermo, Italy",
+      "orcid": "0000-0003-1849-198X"
+    },
+    {
+      "name": "Pagliaro, Antonio",
+      "affiliation": "INAF - Istituto di Astrofisica Spaziale e Fisica Cosmica, Palermo, Italy",
+      "orcid": "0000-0002-6841-1362"
+    }
+  ],
+  "keywords": [
+    "cloud detection",
+    "semantic segmentation",
+    "deep learning",
+    "weak supervision",
+    "transfer learning",
+    "U-Net",
+    "Sentinel-2",
+    "CloudSEN12+",
+    "ERA5",
+    "GFS",
+    "numerical weather prediction",
+    "remote sensing"
+  ],
+  "language": "eng",
+  "related_identifiers": [
+    {
+      "identifier": "10.1016/j.dib.2024.110852",
+      "relation": "references",
+      "scheme": "doi",
+      "resource_type": "dataset"
+    },
+    {
+      "identifier": "https://github.com/antopag/cloudsen12-era5-nwp-labels",
+      "relation": "isSupplementTo",
+      "scheme": "url",
+      "resource_type": "software"
+    }
+  ]
+}
