@@ -1,5 +1,5 @@
 cff-version: 1.2.0
-title: "Code for: ERA5 and GFS Cloud Cover vs. CloudSEN12+ - Can NWP Replace Expert Labels?"
+title: "Code for: Can Scene-Level NWP Cloud Cover Replace Expert Pixel Labels? A Large-Scale Assessment with ERA5, GFS and CloudSEN12+"
 message: "If you use this software, please cite both the software and the associated manuscript."
 type: software
 authors:
@@ -14,8 +14,8 @@ authors:
     email: antonio.pagliaro@inaf.it
 repository-code: "https://github.com/antopag/cloudsen12-era5-nwp-labels"
 license: MIT
-version: 1.0.0
-date-released: "2026-10-08"
+version: 2.0.0
+date-released: "2026-11-13"
 keywords:
   - cloud detection
   - semantic segmentation
@@ -31,7 +31,7 @@ keywords:
   - remote sensing
 preferred-citation:
   type: article
-  title: "ERA5 and GFS Cloud Cover vs. CloudSEN12+: Can NWP Replace Expert Labels?"
+  title: "Can Scene-Level NWP Cloud Cover Replace Expert Pixel Labels? A Large-Scale Assessment with ERA5, GFS and CloudSEN12+"
   authors:
     - family-names: Anzalone
       given-names: Anna

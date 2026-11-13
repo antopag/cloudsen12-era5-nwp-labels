@@ -13,3 +13,6 @@ segmentation-models-pytorch>=0.3
 cdsapi
 requests
 tqdm
+tacoreader
+datasets
+huggingface_hub

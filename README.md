@@ -1,9 +1,10 @@
-# ERA5 and GFS Cloud Cover vs. CloudSEN12+
+# Can Scene-Level NWP Cloud Cover Replace Expert Pixel Labels?
 
-Code accompanying the manuscript:
+Code and results accompanying the manuscript:
 
-> A. Anzalone and A. Pagliaro, *ERA5 and GFS Cloud Cover vs. CloudSEN12+: Can NWP Replace Expert
-> Labels?*, submitted to **Applied Sciences** (MDPI), 2026.
+> A. Anzalone and A. Pagliaro, *Can Scene-Level NWP Cloud Cover Replace Expert Pixel Labels? A
+> Large-Scale Assessment with ERA5, GFS and CloudSEN12+*, submitted to **Applied Sciences** (MDPI),
+> 2026.
 
 The study asks whether freely available cloud-cover fields from numerical weather prediction (NWP)
 products can replace expensive expert pixel-level annotations when training cloud detectors for
@@ -11,10 +12,16 @@ Sentinel-2. It has two parts: a collocation of ERA5 and GFS total cloud cover wi
 expert-annotated CloudSEN12+ patches, and a set of controlled U-Net experiments in which only the
 source of the training labels varies.
 
+Version 2.0.0 corresponds to the revised manuscript. Compared with version 1.0.0 it adds the
+region-disjoint partition and the rebuilt U-Net experiments (`scripts/analysis/20`-`24`), the grouped
+bootstrap and the measurement of the ERA5 temporal offset (`25`, `29`), the two new figures (`26`,
+`27`), and the `results/` directory with the collocation tables and the per-seed values of all 56
+training runs.
+
 ## Requirements
 
 ```bash
-conda create -n cloudsen12 python=3.9
+conda create -n cloudsen12 python=3.10
 conda activate cloudsen12
 pip install -r requirements.txt
 ```
@@ -29,6 +36,27 @@ Two external accounts are required to re-download the inputs:
 - No account is needed for GFS, which is read from the NOAA Open Data archive on AWS, or for
   CloudSEN12+, which is public.
 
+## Results released with the code
+
+Everything needed to check the numbers in the paper without downloading data or training a model.
+
+| File | Content |
+| --- | --- |
+| `results/collocation/era5_vs_cloudsen12.csv` | The 48,380 ERA5 collocations: ROI, acquisition time, position, annotation quality, ERA5 total cloud cover, CloudSEN12+ class percentages |
+| `results/collocation/gfs_vs_cloudsen12_full.csv` | The 81 GFS collocations |
+| `results/collocation/temporal_offset.csv` | Offset in minutes between each acquisition and the ERA5 field used, for all 48,380 collocations |
+| `results/collocation/collocation_stats_revision.csv` | Confidence intervals under the three bootstrap schemes (per sample, per 0.25° cell, per ROI) |
+| `results/collocation/bootstrap_ci.csv` | Per-stratum bootstrap confidence intervals |
+| `results/collocation/collocation_sensitivity_stats.csv` | Nearest-node vs bilinear vs 3x3 collocation |
+| `results/unet_revision/all_runs.csv` | One row per training run (56 runs): configuration, seed and every metric |
+| `results/unet_revision/runs_*.json` | The same runs with the full per-class output, as written by the training script |
+| `results/unet_revision/baselines.json` | Untrained baselines: constant majority class, and ERA5 applied directly as a mask; also holds the per-class pixel counts of the test set |
+| `results/unet_revision/tab*.csv` | Mean and standard deviation across seeds, as reported in Tables 10 and 12-15 |
+
+Some file names and labels produced by the scripts are in Italian: `tab1_principale` = main
+comparison, `tab2_scala` = scale, `tab3_budget` = budget, `tab4_soglia` = threshold, `tab5_bande` =
+bands; `per campione` = per sample, `per cella` = per cell.
+
 ## Data layout
 
 The scripts use paths relative to a working directory that holds the downloaded data. Run them from
@@ -36,19 +64,21 @@ that directory, not from the repository root:
 
 ```
 <work_dir>/
-├── CloudSEN12+_data/
-│   └── downloaded_images/
-│       ├── s2_images/      # <ROI>_<date>_<tile>.tif, 13 L1C bands
-│       ├── labels/         # <ROI>_<date>_<tile>_label.tif, 4 classes
-│       └── metadata/
 ├── era5_data/
 │   ├── netcdf/             # era5_tcc_YYYYMMDD.nc
 │   └── era5_vs_cloudsen12.csv
 ├── gfs_data/
 │   └── gfs_vs_cloudsen12_full.csv
-├── unet_results/           # model weights and JSON results
+├── cloudsen12_scaleup/     # written by script 20: index.csv, <split>/s2, <split>/label
+├── cloudsen12_fast/        # written by script 22: same patches, uncompressed, fast to read
+├── unet_revision/          # model weights and JSON results of the U-Net experiments
 └── figures/                # output figures
 ```
+
+The directory read by the training script can be changed with the environment variable `CS12_DATA`
+or with `--data-dir`. To regenerate the tables and figures from the released results without
+training, copy `results/unet_revision/` to `<work_dir>/unet_revision/` and
+`results/collocation/era5_vs_cloudsen12.csv` to `<work_dir>/era5_data/`.
 
 ## Pipeline
 
@@ -58,19 +88,23 @@ that directory, not from the repository root:
 | --- | --- |
 | `scripts/dataset/01_explore_dataset.py` | Inspect the CloudSEN12+ catalogue |
 | `scripts/dataset/02_download_samples.py` | Download the sample metadata table |
-| `scripts/dataset/03_download_images.py` | Download the Sentinel-2 patches and expert masks |
-| `scripts/dataset/05_download_by_year.py` | Same, restricted to one year |
-| `scripts/dataset/07_analyze_locations.py` | Geographic breakdown of the sample |
 | `scripts/dataset/08_download_era5.py` | Retrieve ERA5 total cloud cover from the CDS |
 | `scripts/analysis/08_download_gfs.py` | Retrieve GFS TCDC from the NOAA AWS archive |
+| `scripts/analysis/20_download_scaleup.py` | Download the patches used by the U-Net experiments with the official CloudSEN12+ partition, verify every patch against the published metadata, write `index.csv` |
+| `scripts/analysis/22_repack_fast.py` | Rewrite the downloaded patches as uncompressed tiled GeoTIFFs for fast training |
+
+`scripts/dataset/03`, `05` and `07` are the smaller downloads and the geographic breakdown used in
+the exploratory phase.
 
 ### 2. Collocation and statistics
 
 | Script | Produces |
 | --- | --- |
 | `scripts/analysis/10_era5_comparison.py` | `era5_vs_cloudsen12.csv`; Table 3 (global statistics) |
-| `scripts/analysis/09_gfs_comparison_full.py` | `gfs_vs_cloudsen12_full.csv`; Table 7 (GFS) |
-| `scripts/analysis/18_bootstrap_ci.py` | 95% bootstrap confidence intervals for every stratum, Tables 3, 5, 6, 7 |
+| `scripts/analysis/09_gfs_comparison_full.py` | `gfs_vs_cloudsen12_full.csv`; Table 8 (GFS) |
+| `scripts/analysis/18_bootstrap_ci.py` | Per-stratum statistics and confidence intervals, Tables 3 and 5-8 |
+| `scripts/analysis/25_collocation_stats.py` | Table 1: per-sample bootstrap vs bootstrap grouped by 0.25° cell and by ROI |
+| `scripts/analysis/29_temporal_offset.py` | Distribution of the ERA5 temporal offset in minutes (Section 2.4) |
 | `scripts/analysis/19_collocation_sensitivity.py` | Table 4: nearest-node vs bilinear vs 3x3 averaging |
 
 ### 3. Figures of the comparison
@@ -82,44 +116,49 @@ that directory, not from the repository root:
 
 ### 4. U-Net experiments
 
-All of them share the same split (seed 42, 70/15/15) and are evaluated on the same 47-patch
-expert-labelled test set. The paper reports the 13-band configuration; `--bands 4` reproduces the
-ablation.
+All experiments use the official CloudSEN12+ partition, which is disjoint by region of interest, and
+are evaluated on the same 975-patch expert-labelled test set. Unannotated pixels (value 99) are
+excluded from the loss and from every metric. Training crops 256x256 windows at native resolution;
+evaluation is on the full 512x512 patch.
 
 | Script | Produces |
 | --- | --- |
-| `scripts/analysis/12_unet_experiment.py` | Models A and B, the original 4-band run |
-| `scripts/analysis/12e_unet_13bands.py` | Models A and B with all 13 L1C bands; Table 8, Table 9, Figure 13 |
-| `scripts/analysis/12b_unet_finetune.py` | ERA5 pretraining + expert fine-tuning at four annotation budgets; Table 11, Figure 11 |
-| `scripts/analysis/12c_weak_label_variants.py` | Binarisation thresholds 30-70% and soft targets; Table 10, Figure 12 |
-| `scripts/analysis/12d_refresh_figs.py` | Figures 9 and 10 |
-
-Typical invocations for the results in the paper:
+| `scripts/analysis/21_unet_revision.py` | One configuration: `--mode expert`, `weak` or `baselines`, with `--n-train`, `--threshold`, `--bands`, `--seeds`, `--pretrained` |
+| `scripts/analysis/23_run_all.py` | All 56 runs of the paper, in blocks; `--list` prints them, `--from N` resumes |
+| `scripts/analysis/24_summarize.py` | `all_runs.csv` and the tables: main comparison (Tables 10, 11), weak-label scale (Table 12), expert budget from scratch vs fine-tuning (Table 13), binarisation threshold (Table 14), 4 vs 13 bands (Table 15) |
+| `scripts/analysis/26_fig_scale.py` | Figure 6 (`fig14_scale`): performance vs number of weakly labelled patches |
+| `scripts/analysis/27_fig_budget.py` | Figure 7 (`fig15_budget`): performance vs expert-label budget |
 
 ```bash
-# Models A and B, 13 bands, 3 seeds
-python scripts/analysis/12e_unet_13bands.py
-
-# weak-label formulations, 13 bands
-python scripts/analysis/12c_weak_label_variants.py --bands 13 --suffix b13
-
-# pretraining and fine-tuning, 13 bands, starting from the Model B weights
-python scripts/analysis/12b_unet_finetune.py --bands 13 --suffix b13 \
-    --pretrained unet_results/b13_era5_s0_best.pth
+python scripts/analysis/20_download_scaleup.py --what test val train_expert
+python scripts/analysis/20_download_scaleup.py --what train_weak --limit 20000
+python scripts/analysis/22_repack_fast.py --splits test val train_expert train_weak
+python scripts/analysis/21_unet_revision.py --mode baselines
+python scripts/analysis/23_run_all.py
+python scripts/analysis/24_summarize.py
 ```
 
-Each script writes an incremental JSON file, so an interrupted run does not lose completed
-trainings. Expect roughly 4-5 minutes per training on an RTX 4090 at 13 bands.
+Each run writes its results to an incremental JSON file, so an interrupted sequence does not lose
+completed trainings.
+
+### Superseded scripts
+
+`scripts/analysis/12_unet_experiment.py`, `12b`, `12c`, `12d` and `12e` are the experiments of the
+first submitted version (306 patches, random per-patch split). They are kept for the record and are
+replaced by script 21; no result in the revised manuscript comes from them.
 
 ## Notes on reproducibility
 
-- Results in the paper are means over three seeds (0, 1, 2); single-seed runs of the ERA5-only
-  models vary by up to 0.1 in overall accuracy, which is why the seed spread is reported throughout.
-- `scripts/analysis/19_collocation_sensitivity.py` is restricted to the patches whose acquisition
-  hour matches the archived ERA5 field, because only one hour per date was stored locally.
-- The ERA5 value of each patch is matched by region of interest **and** acquisition date. An earlier
-  version matched by region of interest alone; that bug is described in the manuscript and is fixed
-  in the code published here.
+- The principal comparison uses five seeds for the expert model trained on the full expert set and
+  three seeds for every other configuration. Per-seed values are in
+  `results/unet_revision/all_runs.csv`.
+- The partition is the one distributed with CloudSEN12+ (`tortilla:data_split`), so it is rebuilt by
+  `20_download_scaleup.py` rather than stored here.
+- CloudSEN12+ records must be read by position, not by DataFrame label: reading by label returns a
+  valid but different patch without raising an error. Script 20 reads by position and checks every
+  patch against the per-class percentages in the dataset metadata.
+- `19_collocation_sensitivity.py` is restricted to the 1,077 collocations for which the archived
+  ERA5 field coincides with the acquisition hour.
 
 ## Data sources
 
@@ -132,7 +171,8 @@ trainings. Expect roughly 4-5 minutes per training on an RTX 4090 at 13 bands.
 ```bibtex
 @article{anzalone2026nwplabels,
   author  = {Anzalone, Anna and Pagliaro, Antonio},
-  title   = {{ERA5} and {GFS} Cloud Cover vs. {CloudSEN12+}: Can {NWP} Replace Expert Labels?},
+  title   = {Can Scene-Level {NWP} Cloud Cover Replace Expert Pixel Labels? {A} Large-Scale
+             Assessment with {ERA5}, {GFS} and {CloudSEN12+}},
   journal = {Applied Sciences},
   year    = {2026},
   note    = {Submitted}
